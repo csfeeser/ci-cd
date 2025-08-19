@@ -24,7 +24,7 @@ flowchart TD
     direction TB
     K7["Cluster pulls image from registry"]
     K8["Deployment creates/updates Pods"]
-    K9["ConfigMaps & Secrets inject config"]
+    K9["ConfigMaps inject config"]
     K10["Readiness/Liveness probes enforce health"]
     K11["Jobs/CronJobs run batch & scheduled tasks"]
   end
