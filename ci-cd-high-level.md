@@ -12,7 +12,7 @@ flowchart TD
       J2["Package Docker image"]
     end
 
-    subgraph GHA_GL["GitHub Actions/GitLab CICD"]
+    subgraph GHA_GL["GitHub Actions/GitLab CI"]
       G1["Build & test in runner"]
       G2["Package Docker image"]
     end
