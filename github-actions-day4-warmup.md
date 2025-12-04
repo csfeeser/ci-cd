@@ -32,8 +32,8 @@ jobs:
             query: "date=2025-12-03"
           - name: "yesterday_apod"
             query: "date=2025-12-02"
-          - name: "random_apod"
-            query: "count=1"
+          - name: "last_year_apod"
+            query: "date=2024-12-03"
 
     steps:
       - name: Checkout repository
@@ -69,7 +69,7 @@ jobs:
 7. Open the **Actions** tab and inspect the logs for the **NASA APOD Matrix Warmup** run.
    You should see:
 
-   * Three matrix jobs (one per request: today, yesterday, random).
+   * Three matrix jobs (one per request: today, yesterday, last_year).
    * The API call step running in each job.
    * No artifact created yet, because nothing is being uploaded.
 
@@ -81,14 +81,14 @@ Your job is to fix the workflow so GitHub Actions can:
 
 * Call the NASA API using a **repository secret** for the API key (no hard-coding in YAML).
 * Successfully download the HD APOD image for each matrix job.
-* Save the downloaded images as a **single artifact** that you can download from the Actions run.
+* Save the downloaded images as **artifacts** that you can download from the Actions run (one artifact per matrix job is fine).
 
 Then:
 
 * Verify the log output in the Actions run and confirm:
 
   * All matrix jobs succeeded.
-  * An artifact exists and contains multiple APOD images.
+  * There are three artifacts (one per matrix job), each containing an APOD image.
 
 ---
 
@@ -127,6 +127,8 @@ Nothing is uploading them.
 
 You’ll need to add a new step that uses `actions/upload-artifact@v4` and points at the `images/` folder.
 
+Remember: because you’re using a matrix, each job should use a **unique artifact name**, or you’ll get a 409 conflict.
+
 </details>
 
 <details>
@@ -136,11 +138,12 @@ Each matrix job uses a different `name` and `query` value.
 
 Check that:
 
-1. The logs show three separate jobs (today, yesterday, random).
+1. The logs show three separate jobs (today, yesterday, last_year).
 2. Each job calls a different APOD URL based on `matrix.request.query`.
 3. Each job saves an image with a different filename (using `matrix.request.name`).
+4. You see three separate artifacts, one per job.
 
-If all three jobs finish successfully and the artifact contains multiple images, your matrix is behaving as expected.
+If all three jobs finish successfully and the artifacts contain APOD images, your matrix is behaving as expected.
 
 </details>
 
@@ -175,21 +178,25 @@ This lets the workflow read the key securely from GitHub’s secret vault.
 
 ---
 
-### 2. Add a step to upload the downloaded images as an artifact
+### 2. Add a step to upload the downloaded images as artifacts
 
 Right now, images are saved into `images/`, but nothing uploads them.
 
-Add a new step after the API call step:
+Add a new step after the API call step, and make sure each matrix job uses a **unique artifact name**:
 
 ```yaml
       - name: Upload APOD images
         uses: actions/upload-artifact@v4
         with:
-          name: apod-images
+          name: apod-images-${{ matrix.request.name }}
           path: images/
 ```
 
-This tells GitHub Actions to package everything in `images/` as an artifact named `apod-images`.
+This tells GitHub Actions to package everything in `images/` as an artifact, with one artifact per matrix job like:
+
+* `apod-images-today_apod`
+* `apod-images-yesterday_apod`
+* `apod-images-last_year_apod`
 
 ---
 
@@ -214,8 +221,8 @@ jobs:
             query: "date=2025-12-03"
           - name: "yesterday_apod"
             query: "date=2025-12-02"
-          - name: "random_apod"
-            query: "count=1"
+          - name: "last_year_apod"
+            query: "date=2024-12-03"
 
     steps:
       - name: Checkout repository
@@ -246,7 +253,7 @@ jobs:
       - name: Upload APOD images
         uses: actions/upload-artifact@v4
         with:
-          name: apod-images
+          name: apod-images-${{ matrix.request.name }}
           path: images/
 ```
 
@@ -259,9 +266,15 @@ jobs:
 3. Open the latest **NASA APOD Matrix Warmup** run.
 4. Confirm in the logs that:
 
-   * Each matrix job calls the APOD API with a different query.
+   * Each matrix job calls the APOD API with a different date.
    * The **Call NASA APOD API** step succeeds in all jobs.
-   * The **Upload APOD images** step succeeds.
-   * The artifact **apod-images** contains multiple `.jpg` files (one per matrix job).
+   * The **Upload APOD images** step succeeds in all jobs.
+   * You see three artifacts:
+
+     * `apod-images-today_apod`
+     * `apod-images-yesterday_apod`
+     * `apod-images-last_year_apod`
+
+Each artifact should contain one APOD image file from that job.
 
 </details>
