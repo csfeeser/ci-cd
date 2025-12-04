@@ -1,4 +1,4 @@
-# Warmup Activity: Fixing a Broken NASA APOD Matrix Workflow
+# Warmup Activity: Fixing a NASA APOD Matrix Workflow
 
 <img src="https://blog.mahdyar.me/wp-content/uploads/2021/02/0cm6yx27tez21.jpg" width="400" />
 
@@ -41,7 +41,7 @@ jobs:
 
       - name: Call NASA APOD API
         run: |
-          # HARD-CODED API KEY-- THIS IS SUPER BAD PRACTICE ON PURPOSE
+          # HARD-CODED API KEY -- THIS IS SUPER BAD PRACTICE ON PURPOSE
           API_KEY="CHAD-WILL-GIVE-THIS-TO-YOU-IN-THE-ZOOM-CHAT"
 
           # Build the APOD URL using the matrix query value
@@ -60,12 +60,6 @@ jobs:
           # Download the image into the images/ folder
           mkdir -p images
           curl "$HDURL" -o "images/${{ matrix.request.name }}.jpg"
-
-      - name: Upload APOD images
-        uses: actions/upload-artifact@v4
-        with:
-          name: apod-images
-          path: image/    # <- INTENTIONAL BUG: wrong path on purpose
 ```
 
 5. Commit the file.
@@ -76,7 +70,8 @@ jobs:
    You should see:
 
    * Three matrix jobs (one per request: today, yesterday, random).
-   * A failure related to the API key and/or artifact upload.
+   * The API call step running in each job.
+   * No artifact created yet, because nothing is being uploaded.
 
 ---
 
@@ -84,14 +79,18 @@ jobs:
 
 Your job is to fix the workflow so GitHub Actions can:
 
-  * call the NASA API key **AS A REPOSITORY SECRET** (no hard-coding in YAML).
-  * Successfully download the HD APOD image for each matrix job.
-  * Correctly upload all images as a single artifact.
+* Call the NASA API using a **repository secret** for the API key (no hard-coding in YAML).
+* Successfully download the HD APOD image for each matrix job.
+* Save the downloaded images as a **single artifact** that you can download from the Actions run.
+
+Then:
 
 * Verify the log output in the Actions run and confirm:
 
   * All matrix jobs succeeded.
-  * The artifact contains multiple APOD images.
+  * An artifact exists and contains multiple APOD images.
+
+---
 
 ## Hints
 
@@ -100,15 +99,33 @@ Your job is to fix the workflow so GitHub Actions can:
 
 Peep [this lab from yesterday!](https://live.alta3.com/content/github-actions/labs/content/github-actions/github_actions_securing_secrets.html)
 
+Short version:
+
+1. Go to **Settings → Secrets and variables → Actions**.
+2. Click **New repository secret**.
+3. Name it something like `NASA_API_KEY`.
+4. Paste the real NASA API key as the value and save.
+
+Then, in the workflow, you can read it with:
+
+```bash
+API_KEY="${{ secrets.NASA_API_KEY }}"
+```
+
 </details>
 
 <details>
-<summary>The artifact upload step fails. What’s going on?</summary>
+<summary>Why don’t I see any artifacts?</summary>
 
-Look carefully at:
+Look at the bottom of the workflow:
 
-* The directory where the images are actually downloaded.
-* The `path:` used in the `upload-artifact` step.
+* Is there any step using `actions/upload-artifact`?
+* Is there any `path:` pointing to the `images/` directory?
+
+Right now, all you do is *download* images into a folder.
+Nothing is uploading them.
+
+You’ll need to add a new step that uses `actions/upload-artifact@v4` and points at the `images/` folder.
 
 </details>
 
@@ -127,18 +144,28 @@ If all three jobs finish successfully and the artifact contains multiple images,
 
 </details>
 
+---
+
 ## Solution (Click to Reveal)
 
 <details>
 <summary>Click to show the corrected workflow and fixes</summary>
 
-### 1. The API key is hard-coded in the workflow
+### 1. Replace the hard-coded API key with a repository secret
+
+**Steps:**
 
 1. Go to **Settings → Secrets and variables → Actions → New repository secret**.
 2. Create a secret named `NASA_API_KEY`.
 3. Paste the real NASA API key as the value and save it.
 
-Then in your workflow, replace the hard-coded line with:
+Then in your workflow, replace the hard-coded line:
+
+```bash
+API_KEY="CHAD-WILL-GIVE-THIS-TO-YOU-IN-THE-ZOOM-CHAT"
+```
+
+with:
 
 ```bash
 API_KEY="${{ secrets.NASA_API_KEY }}"
@@ -148,31 +175,21 @@ This lets the workflow read the key securely from GitHub’s secret vault.
 
 ---
 
-### 2. The artifact upload step points at the wrong directory
+### 2. Add a step to upload the downloaded images as an artifact
 
-**Problem in the original workflow:**
+Right now, images are saved into `images/`, but nothing uploads them.
 
-```yaml
-- name: Upload APOD images
-  uses: actions/upload-artifact@v4
-  with:
-    name: apod-images
-    path: image/    # wrong path – folder does not exist
-```
-
-But the images are saved to `images/` (with an **s**):
-
-```bash
-mkdir -p images
-curl "$HDURL" -o "images/${{ matrix.request.name }}.jpg"
-```
-
-**Fix:**
-Update the artifact `path:` to match the real folder:
+Add a new step after the API call step:
 
 ```yaml
-path: images/
+      - name: Upload APOD images
+        uses: actions/upload-artifact@v4
+        with:
+          name: apod-images
+          path: images/
 ```
+
+This tells GitHub Actions to package everything in `images/` as an artifact named `apod-images`.
 
 ---
 
@@ -230,7 +247,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: apod-images
-          path: images/          # FIX: correct folder name
+          path: images/
 ```
 
 ---
@@ -245,6 +262,6 @@ jobs:
    * Each matrix job calls the APOD API with a different query.
    * The **Call NASA APOD API** step succeeds in all jobs.
    * The **Upload APOD images** step succeeds.
-   * The artifact **apod-images** contains multiple `.jpg` files.
+   * The artifact **apod-images** contains multiple `.jpg` files (one per matrix job).
 
 </details>
